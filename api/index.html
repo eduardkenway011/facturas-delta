@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="es" data-tema="claro">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Sistema de facturación con PHP y PostgreSQL">
+  <title>FacturaPro · Sistema de facturación</title>
+  <link rel="stylesheet" href="css/estilos.css">
+  <script src="js/app.js" defer></script>
+</head>
+<body>
+
+  <!-- Fondo decorativo animado -->
+  <div class="fondo-animado" aria-hidden="true"></div>
+
+  <!-- ============ CABECERA ============ -->
+  <header class="cabecera">
+    <div class="marca">
+      <span class="marca-icono">🧾</span>
+      <span class="marca-texto">Factura<strong>Pro</strong></span>
+    </div>
+
+    <nav class="nav" aria-label="Secciones">
+      <button class="nav-btn activo" data-vista="facturas">Facturas</button>
+      <button class="nav-btn" data-vista="clientes">Clientes</button>
+    </nav>
+
+    <button id="btn-tema" class="btn-icono" aria-label="Cambiar tema" title="Cambiar tema">
+      🌙
+    </button>
+  </header>
+
+  <main class="contenedor">
+
+    <!-- ============ ESTADÍSTICAS ============ -->
+    <section class="stats" aria-label="Resumen">
+      <article class="stat">
+        <span class="stat-icono">👥</span>
+        <div>
+          <p class="stat-etiqueta">Clientes</p>
+          <p class="stat-valor" id="stat-clientes">0</p>
+        </div>
+      </article>
+
+      <article class="stat">
+        <span class="stat-icono">🧾</span>
+        <div>
+          <p class="stat-etiqueta">Facturas</p>
+          <p class="stat-valor" id="stat-facturas">0</p>
+        </div>
+      </article>
+
+      <article class="stat">
+        <span class="stat-icono">💰</span>
+        <div>
+          <p class="stat-etiqueta">Facturado</p>
+          <p class="stat-valor" id="stat-total">0,00 €</p>
+        </div>
+      </article>
+
+      <article class="stat">
+        <span class="stat-icono">⏳</span>
+        <div>
+          <p class="stat-etiqueta">Pendiente</p>
+          <p class="stat-valor" id="stat-pendiente">0,00 €</p>
+        </div>
+      </article>
+    </section>
+
+    <!-- ============ VISTA FACTURAS ============ -->
+    <section id="vista-facturas" class="vista activa">
+      <div class="barra">
+        <h2 class="titulo-vista">Facturas</h2>
+        <button id="btn-nueva-factura" class="btn btn-primario">+ Nueva factura</button>
+      </div>
+
+      <div class="filtros">
+        <input id="buscar-facturas" type="search" class="buscador"
+               placeholder="Buscar por número, concepto o cliente…"
+               aria-label="Buscar facturas">
+        <select id="filtro-estado" class="select" aria-label="Filtrar por estado">
+          <option value="">Todos los estados</option>
+          <option value="pendiente">Pendientes</option>
+          <option value="pagada">Pagadas</option>
+          <option value="anulada">Anuladas</option>
+        </select>
+      </div>
+
+      <div class="tabla-envoltura">
+        <table class="tabla" id="tabla-facturas">
+          <thead>
+            <tr>
+              <th scope="col">Número</th>
+              <th scope="col">Cliente</th>
+              <th scope="col">Fecha</th>
+              <th scope="col">Concepto</th>
+              <th scope="col" class="der">Subtotal</th>
+              <th scope="col" class="der">IVA</th>
+              <th scope="col" class="der">Total</th>
+              <th scope="col">Estado</th>
+              <th scope="col" class="der">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="cuerpo-facturas"></tbody>
+        </table>
+
+        <div id="vacio-facturas" class="vacio" hidden>
+          <span class="vacio-icono">🗂️</span>
+          <p>No hay facturas que coincidan con la búsqueda.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ VISTA CLIENTES ============ -->
+    <section id="vista-clientes" class="vista">
+      <div class="barra">
+        <h2 class="titulo-vista">Clientes</h2>
+        <button id="btn-nuevo-cliente" class="btn btn-primario">+ Nuevo cliente</button>
+      </div>
+
+      <div class="filtros">
+        <input id="buscar-clientes" type="search" class="buscador"
+               placeholder="Buscar por nombre o email…"
+               aria-label="Buscar clientes">
+      </div>
+
+      <div class="tabla-envoltura">
+        <table class="tabla" id="tabla-clientes">
+          <thead>
+            <tr>
+              <th scope="col">Nombre</th>
+              <th scope="col">Email</th>
+              <th scope="col">Teléfono</th>
+              <th scope="col">Dirección</th>
+              <th scope="col" class="der">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="cuerpo-clientes"></tbody>
+        </table>
+
+        <div id="vacio-clientes" class="vacio" hidden>
+          <span class="vacio-icono">👤</span>
+          <p>No hay clientes que coincidan con la búsqueda.</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ============ MODAL: FACTURA ============ -->
+  <div class="modal" id="modal-factura" role="dialog" aria-modal="true"
+       aria-labelledby="titulo-modal-factura" hidden>
+    <div class="modal-caja">
+      <header class="modal-cabecera">
+        <h3 id="titulo-modal-factura">Nueva factura</h3>
+        <button type="button" class="btn-icono" data-cerrar aria-label="Cerrar">✕</button>
+      </header>
+
+      <form id="form-factura" novalidate>
+        <input type="hidden" id="factura-id">
+
+        <div class="rejilla">
+          <label class="campo">
+            <span>Número</span>
+            <input id="factura-numero" maxlength="20"
+                   placeholder="Se genera automáticamente">
+          </label>
+
+          <label class="campo">
+            <span>Cliente *</span>
+            <select id="factura-cliente" required></select>
+          </label>
+
+          <label class="campo">
+            <span>Fecha *</span>
+            <input id="factura-fecha" type="date" required>
+          </label>
+
+          <label class="campo">
+            <span>Estado</span>
+            <select id="factura-estado">
+              <option value="pendiente">Pendiente</option>
+              <option value="pagada">Pagada</option>
+              <option value="anulada">Anulada</option>
+            </select>
+          </label>
+
+          <label class="campo ancho-total">
+            <span>Concepto *</span>
+            <input id="factura-concepto" maxlength="200"
+                   placeholder="Ej. Diseño de logotipo" required>
+          </label>
+
+          <label class="campo">
+            <span>Subtotal (€) *</span>
+            <input id="factura-subtotal" type="number" min="0" step="0.01"
+                   placeholder="0.00" required>
+          </label>
+
+          <label class="campo">
+            <span>IVA (%) *</span>
+            <input id="factura-iva" type="number" min="0" max="100" step="0.01"
+                   value="21" required>
+          </label>
+        </div>
+
+        <p class="total-preview">
+          Total con IVA: <strong id="factura-total-preview">0,00 €</strong>
+        </p>
+
+        <p class="error-form" id="error-factura" hidden></p>
+
+        <footer class="modal-pie">
+          <button type="button" class="btn" data-cerrar>Cancelar</button>
+          <button type="submit" class="btn btn-primario">Guardar factura</button>
+        </footer>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: CLIENTE ============ -->
+  <div class="modal" id="modal-cliente" role="dialog" aria-modal="true"
+       aria-labelledby="titulo-modal-cliente" hidden>
+    <div class="modal-caja">
+      <header class="modal-cabecera">
+        <h3 id="titulo-modal-cliente">Nuevo cliente</h3>
+        <button type="button" class="btn-icono" data-cerrar aria-label="Cerrar">✕</button>
+      </header>
+
+      <form id="form-cliente" novalidate>
+        <input type="hidden" id="cliente-id">
+
+        <div class="rejilla">
+          <label class="campo ancho-total">
+            <span>Nombre *</span>
+            <input id="cliente-nombre" maxlength="120" placeholder="Ej. Ana Torres" required>
+          </label>
+
+          <label class="campo">
+            <span>Email</span>
+            <input id="cliente-email" type="email" maxlength="150"
+                   placeholder="ana@correo.com">
+          </label>
+
+          <label class="campo">
+            <span>Teléfono</span>
+            <input id="cliente-telefono" maxlength="30" placeholder="+34 600 000 000">
+          </label>
+
+          <label class="campo ancho-total">
+            <span>Dirección</span>
+            <input id="cliente-direccion" maxlength="200" placeholder="Calle, número, ciudad">
+          </label>
+        </div>
+
+        <p class="error-form" id="error-cliente" hidden></p>
+
+        <footer class="modal-pie">
+          <button type="button" class="btn" data-cerrar>Cancelar</button>
+          <button type="submit" class="btn btn-primario">Guardar cliente</button>
+        </footer>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: CONFIRMAR BORRADO ============ -->
+  <div class="modal" id="modal-confirmar" role="alertdialog" aria-modal="true"
+       aria-labelledby="confirmar-texto" hidden>
+    <div class="modal-caja modal-caja--pequena">
+      <header class="modal-cabecera">
+        <h3>Confirmar</h3>
+      </header>
+      <p id="confirmar-texto">¿Seguro que quieres borrarlo?</p>
+      <footer class="modal-pie">
+        <button type="button" class="btn" data-cerrar>Cancelar</button>
+        <button type="button" class="btn btn-peligro" id="btn-confirmar-si">Sí, borrar</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- ============ AVISOS (toasts) ============ -->
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+
+  <noscript>
+    <p class="aviso-noscript">Este sistema necesita JavaScript activado.</p>
+  </noscript>
+
+</body>
+</html>

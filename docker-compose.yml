@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: Daniel
+      POSTGRES_PASSWORD: facturacion123
+      POSTGRES_DB: facturacion
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql/esquema.sql:/docker-entrypoint-initdb.d/01-esquema.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U Daniel -d facturacion"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: facturacion
+      DB_USER: Daniel
+      DB_PASS: facturacion123
+    ports:
+      - "8000:80"
+    volumes:
+      - .:/var/www/html
+
+volumes:
+  postgres_data:
